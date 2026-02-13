@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LoyaltyController } from './loyalty.controller';
+import { LoyaltyService } from './loyalty.service';
 
 describe('LoyaltyController', () => {
   let controller: LoyaltyController;
@@ -7,6 +8,12 @@ describe('LoyaltyController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LoyaltyController],
+      providers: [
+        {
+          provide: LoyaltyService,
+          useValue: {},
+        },
+      ],
     }).compile();
 
     controller = module.get<LoyaltyController>(LoyaltyController);
