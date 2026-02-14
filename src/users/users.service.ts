@@ -101,7 +101,7 @@ export class UsersService {
     return `${encode(JSON.stringify(header))}.${encode(JSON.stringify(payload))}.`;
   }
 
-  async signUp(dto: SignUpDto): Promise<AuthResponse> {
+  signUp(dto: SignUpDto): AuthResponse {
     const email = dto.email.toLowerCase();
     const existing = [...this.users.values()].find((u) => u.email === email);
     if (existing) {
@@ -130,7 +130,7 @@ export class UsersService {
     };
   }
 
-  async signIn(dto: SignInDto): Promise<AuthResponse> {
+  signIn(dto: SignInDto): AuthResponse {
     const email = dto.email.toLowerCase();
     const user = [...this.users.values()].find((u) => u.email === email);
     if (!user || user.passwordHash !== this.hashPassword(dto.password)) {
@@ -149,7 +149,7 @@ export class UsersService {
     };
   }
 
-  async logout(): Promise<{ message: string }> {
+  logout(): { message: string } {
     return { message: 'Logged out successfully' };
   }
 

@@ -13,16 +13,24 @@
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
+    "test": "npm run test:all",
+    "test:all": "bash ./scripts/test-all.sh",
+    "test:unit": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e:user": "jest --config ./test/jest-e2e.json test/api/user",
+    "test:e2e:order": "jest --config ./test/jest-e2e.json test/api/order",
+    "test:e2e:product": "jest --config ./test/jest-e2e.json test/api/product",
+    "test:e2e:loyalty": "jest --config ./test/jest-e2e.json test/api/loyalty",
+    "test:e2e:flows": "jest --config ./test/jest-e2e.json test/api/e2e"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
+    "axios": "^1.13.5",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },

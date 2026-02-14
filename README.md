@@ -47,8 +47,28 @@ $ npm run test
 # e2e tests
 $ npm run test:e2e
 
+# API parity e2e suites (ported from api-tests)
+$ npm run test:e2e:user
+$ npm run test:e2e:order
+$ npm run test:e2e:product
+$ npm run test:e2e:loyalty
+$ npm run test:e2e:flows
+
 # test coverage
 $ npm run test:cov
+```
+
+## API parity e2e configuration
+
+The API suites under `test/api/**` are recreated from the `api-tests` repo and target this monolith app.
+
+- Default base URL: `http://localhost:3000`
+- Override with: `MONOLITH_APP_URL`
+
+Example:
+
+```bash
+MONOLITH_APP_URL=http://localhost:3000 npm run test:e2e
 ```
 
 ## Deployment

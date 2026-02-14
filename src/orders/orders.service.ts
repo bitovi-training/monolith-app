@@ -99,7 +99,9 @@ export class OrdersService {
   updateOrder(orderId: string, products: OrderProduct[]): Order {
     const order = this.getOrderById(orderId);
     if (order.status !== 'PENDING') {
-      throw new BadRequestException('Can only update products for pending orders');
+      throw new BadRequestException(
+        'Can only update products for pending orders',
+      );
     }
 
     const current = new Map<string, number>();

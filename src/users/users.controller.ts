@@ -9,7 +9,8 @@ import {
   Post,
   UnauthorizedException,
 } from '@nestjs/common';
-import { SignInDto, SignUpDto, UsersService } from './users.service';
+import { UsersService } from './users.service';
+import type { SignInDto, SignUpDto } from './users.service';
 
 @Controller()
 export class UsersController {
@@ -31,7 +32,9 @@ export class UsersController {
   @HttpCode(HttpStatus.OK)
   logout(@Headers('authorization') authorization?: string) {
     if (!authorization || !authorization.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or invalid Authorization header');
+      throw new UnauthorizedException(
+        'Missing or invalid Authorization header',
+      );
     }
 
     return this.usersService.logout();
@@ -46,9 +49,9 @@ export class UsersController {
   }
 
   @Get('users/:userId/validate')
-  async validateUser(@Param('userId') userId: string) {
+  validateUser(@Param('userId') userId: string) {
     return {
-      exists: await this.usersService.userExists(userId),
+      exists: this.usersService.userExists(userId),
       userId,
     };
   }
