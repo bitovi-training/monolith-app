@@ -14,6 +14,7 @@ This is a monolithic NestJS application that organizes different business domain
 ## Architecture
 
 The application follows a modular monolith architecture where each business domain is encapsulated in its own NestJS module with:
+
 - Controllers for handling HTTP requests
 - Services for business logic
 - Models/DTOs for data structures
@@ -27,15 +28,53 @@ $ npm install
 
 ## Compile and run the project
 
-```bash
-# development
-$ npm run start
+### Local Development
 
-# watch mode
+```bash
+# Install dependencies
+$ npm install
+
+# development mode (with auto-reload)
 $ npm run start:dev
 
-# production mode
+# Watch mode
+$ npm run start:watch
+
+# debug mode
+$ npm run start:debug
+
+# production mode (requires build first)
+$ npm run build
 $ npm run start:prod
+```
+
+### Docker & Docker Compose
+
+The monolith is designed to run with Docker Compose, which orchestrates:
+
+- **NestJS App** (Users, Products, Loyalty modules) on port 3000
+- **Go Orders Service** on port 8080
+
+**Prerequisites:** Docker Desktop must be running
+
+```bash
+# Build Docker images
+$ npm run docker:build
+
+# Start all services
+$ npm run docker:up
+
+# Start in background
+$ npm run docker:up:d
+
+# View logs
+$ npm run docker:logs
+
+# Stop all services
+$ npm run docker:down
+
+# Restart services
+$ npm run docker:restart
 ```
 
 ## Run tests
@@ -44,12 +83,77 @@ $ npm run start:prod
 # unit tests
 $ npm run test
 
-# e2e tests
-$ npm run test:e2e
+# watch mode
+$ npm run test:watch
 
 # test coverage
 $ npm run test:cov
 ```
+
+## Service Endpoints
+
+Once running, the application exposes the following endpoints:
+
+### NestJS App (Port 3000)
+
+- **Users Module**
+  - `POST /auth/sign-up` - Register a new user
+  - `POST /auth/sign-in` - Login user
+  - `GET /users/:id` - Get user by ID
+  - `GET /health` - Health check
+
+- **Products Module**
+  - `GET /products` - List all products
+  - `GET /products/:id` - Get product details
+  - `POST /products` - Create product (admin only)
+
+- **Loyalty Module**
+  - `POST /loyalty/accrue` - Accrue loyalty points
+  - `POST /loyalty/redeem` - Redeem points
+  - `GET /loyalty/balance/:userId` - Get loyalty balance
+  - `GET /loyalty/redemptions/:userId` - Get redemption history
+
+### Go Orders Service (Port 8080)
+
+- `GET /orders` - List orders
+- `POST /orders` - Create order
+- `GET /orders/:id` - Get order details
+- `PUT /orders/:id` - Update order
+
+## Environment Variables
+
+The application uses the following environment variables:
+
+```env
+# NestJS App
+NODE_ENV=development|production
+PORT=3000
+
+# Service URLs (used by NestJS app to communicate with Go Orders service)
+ORDER_SERVICE_URL=http://orders:8080
+USER_SERVICE_URL=http://localhost:3000
+PRODUCT_SERVICE_URL=http://localhost:3000
+```
+
+When running with Docker Compose, `ORDER_SERVICE_URL` is automatically set to `http://orders:8080` (docker network hostname).
+
+## Architecture Notes
+
+### Monolith Design
+
+- **Users, Products, Loyalty**: Implemented as NestJS modules within the same Node.js process
+- **Orders**: Standalone Go service running in a separate container
+- **Cross-Service Communication**: NestJS app calls Orders service via HTTP using the `OrderClient`
+- **Internal Communication**: Users, Products, and Loyalty modules use NestJS dependency injection
+
+### Technology Stack
+
+- **NestJS**: Framework for the monolithic core
+- **TypeScript**: Language for NestJS modules
+- **Go**: Alternative language for Orders microservice
+- **Docker Compose**: Orchestration for multi-service deployment
+- **Jest**: Testing framework
+- **bcrypt**: Password hashing for authentication
 
 ## Deployment
 

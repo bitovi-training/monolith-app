@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  orders:
+    build:
+      context: ./src/orders
+      dockerfile: Dockerfile
+    container_name: orders-service
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  nestjs-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nestjs-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - ORDER_SERVICE_URL=http://orders:8080
+      - USER_SERVICE_URL=http://localhost:3000
+      - PRODUCT_SERVICE_URL=http://localhost:3000
+    depends_on:
+      orders:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  default:
+    name: monolith-network
