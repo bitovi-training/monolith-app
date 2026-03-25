@@ -7,17 +7,17 @@ import {
   ParseIntPipe,
   Post,
   UseGuards,
-} from "@nestjs/common";
-import { CreateProductDto } from "./dto/create-product.dto";
-import { ProductsService } from "./products.service";
-import type { Product } from "./entities/product.entity";
+} from '@nestjs/common';
+import { CreateProductDto } from './dto/create-product.dto';
+import { ProductsService } from './products.service';
+import type { Product } from './entities/product.entity';
 import {
   AuthGuard,
   RequireRolesGuard,
   Roles,
-} from "@bitovi-training/auth-middleware";
+} from '@bitovi-training/auth-middleware';
 
-@Controller("products")
+@Controller('products')
 export class ProductsController {
   private readonly logger = new Logger(ProductsController.name);
 
@@ -31,8 +31,8 @@ export class ProductsController {
   }
 
   @UseGuards(AuthGuard)
-  @Get(":id")
-  findOne(@Param("id", ParseIntPipe) id: number): Product {
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number): Product {
     this.logger.log(`GET /products/${id} - Fetching product details`);
 
     try {
@@ -49,10 +49,10 @@ export class ProductsController {
   }
 
   @UseGuards(AuthGuard, RequireRolesGuard)
-  @Roles("admin")
+  @Roles('admin')
   @Post()
   create(@Body() payload: CreateProductDto): Product {
-    this.logger.log("POST /products - Creating product");
+    this.logger.log('POST /products - Creating product');
     const product = this.productsService.create(payload);
     this.logger.log(`POST /products - Created product ${product.id}`);
     return product;

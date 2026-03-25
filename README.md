@@ -86,6 +86,13 @@ $ npm run test
 # watch mode
 $ npm run test:watch
 
+# API parity e2e suites (ported from api-tests)
+$ npm run test:e2e:user
+$ npm run test:e2e:order
+$ npm run test:e2e:product
+$ npm run test:e2e:loyalty
+$ npm run test:e2e:flows
+
 # test coverage
 $ npm run test:cov
 ```
