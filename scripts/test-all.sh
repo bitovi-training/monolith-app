@@ -14,11 +14,33 @@ npm run test:unit -- --runInBand
 PORT="$PORT" npm run start >/tmp/monolith-app-tests.log 2>&1 &
 SERVER_PID=$!
 
+# Start Go order service from the repo root
+(cd src/orders && go run ./cmd/server >/tmp/order-service-tests.log 2>&1) &
+ORDER_SERVER_PID=$!
+
 cleanup() {
   kill "$SERVER_PID" >/dev/null 2>&1 || true
+  kill "$ORDER_SERVER_PID" >/dev/null 2>&1 || true
   wait "$SERVER_PID" 2>/dev/null || true
+  wait "$ORDER_SERVER_PID" 2>/dev/null || true
 }
 trap cleanup EXIT
+
+# Wait for order service to be ready
+ready=false
+for _ in {1..40}; do
+  if curl -fsS "http://localhost:8080/health" >/dev/null 2>&1; then
+    ready=true
+    break
+  fi
+  sleep 1
+done
+
+if [[ "$ready" != true ]]; then
+  echo "Order service failed to become ready at http://localhost:8080"
+  echo "--- /tmp/order-service-tests.log ---"
+  tail -n 100 /tmp/order-service-tests.log || true
+fi
 
 ready=false
 for _ in {1..40}; do
@@ -37,3 +59,6 @@ if [[ "$ready" != true ]]; then
 fi
 
 MONOLITH_APP_URL="$APP_URL" npm run test:e2e -- --runInBand
+
+echo "Running Go tests..."
+go test ./test/api/order/... -v

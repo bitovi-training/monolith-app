@@ -5,6 +5,13 @@ const { MONOLITH_APP_URL, BEARER_TOKEN } = process.env;
 
 const baseUrl = MONOLITH_APP_URL ?? 'http://localhost:3000';
 
+const serviceUrls: Record<'user' | 'order' | 'product' | 'loyalty', string> = {
+  user: baseUrl,
+  product: baseUrl,
+  loyalty: baseUrl,
+  order: 'http://localhost:8080',
+};
+
 export const withRetry = async <T>(
   fn: () => Promise<T>,
   retries = 5,
@@ -22,7 +29,7 @@ export const withRetry = async <T>(
 };
 
 export const createClient = (
-  _service: 'user' | 'order' | 'product' | 'loyalty',
+  service: 'user' | 'order' | 'product' | 'loyalty',
   useAuth = false,
   token?: string,
 ): AxiosInstance => {
@@ -35,7 +42,7 @@ export const createClient = (
     headers.Authorization = `Bearer ${authToken}`;
   }
   return axios.create({
-    baseURL: baseUrl,
+    baseURL: serviceUrls[service],
     headers,
     validateStatus: () => true,
   });

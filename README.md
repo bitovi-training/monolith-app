@@ -79,23 +79,45 @@ $ npm run docker:restart
 
 ## Run tests
 
+### Quick Start
+
 ```bash
-# unit tests
-$ npm run test
+# Run all tests (unit + e2e) - requires Go order service running
+# The test-all.sh script automatically starts the order service
+$ npm run test:all
 
-# watch mode
+# Run only unit tests (no dependencies needed)
+$ npm run test:unit
+
+# Watch mode (unit tests only)
 $ npm run test:watch
+```
 
-# API parity e2e suites (ported from api-tests)
-$ npm run test:e2e:user
-$ npm run test:e2e:order
-$ npm run test:e2e:product
-$ npm run test:e2e:loyalty
-$ npm run test:e2e:flows
+### Individual Test Suites
 
+```bash
+# Run specific e2e test file
+$ npm run test:e2e test/api/product/product.spec.ts
+$ npm run test:e2e test/api/order/order.spec.ts
+$ npm run test:e2e test/api/loyalty/loyalty.spec.ts
+$ npm run test:e2e test/api/user/auth.e2e-spec.ts
+
+# All e2e tests at once (requires NestJS app running on port 3000)
+$ npm run test:e2e
+```
+
+### Coverage
+
+```bash
 # test coverage
 $ npm run test:cov
 ```
+
+### Test Suite Details
+
+- **Unit Tests** (`npm run test:unit`): Tests for services, controllers, and internal business logic. No external dependencies required. Runs in ~3 seconds.
+- **E2E Tests** (`npm run test:e2e`): Integration tests that hit the running application. Requires the NestJS app to be running on port 3000. Some tests also require the Go Orders Service on port 8080.
+- **Full Test Suite** (`npm run test:all`): Runs unit tests, starts the NestJS app and Go Orders Service, then runs all e2e tests. Total runtime ~10 seconds.
 
 ## Service Endpoints
 

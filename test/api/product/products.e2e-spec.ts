@@ -1,7 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { AppModule } from './../src/app.module';
+import { AppModule } from '../../../src/app.module';
+import { createMockJwt } from '../helpers/authTokens';
 
 interface ProductResponse {
   id: number;
@@ -109,9 +110,11 @@ describe('ProductsController (e2e)', () => {
   describe('GET /products/:id', () => {
     // T020: E2E test for GET /products/:id with valid ID (AS1)
     it('should return product details for valid ID', () => {
+      const token = createMockJwt({ roles: ['admin'] });
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return request(app.getHttpServer())
         .get('/products/1')
+        .set('Authorization', `Bearer ${token}`)
         .expect(200)
         .expect((res) => {
           const product = res.body as ProductResponse;
@@ -130,9 +133,11 @@ describe('ProductsController (e2e)', () => {
 
     // T021: E2E test for GET /products/:id with non-existent ID returns 404 (AS2)
     it('should return 404 for non-existent product ID', () => {
+      const token = createMockJwt({ roles: ['admin'] });
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return request(app.getHttpServer())
         .get('/products/999')
+        .set('Authorization', `Bearer ${token}`)
         .expect(404)
         .expect((res) => {
           const error = res.body as ErrorResponse;
@@ -144,9 +149,11 @@ describe('ProductsController (e2e)', () => {
 
     // T022: E2E test for GET /products/:id with invalid ID format returns 400 (edge case)
     it('should return 400 for invalid ID format', () => {
+      const token = createMockJwt({ roles: ['admin'] });
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       return request(app.getHttpServer())
         .get('/products/abc')
+        .set('Authorization', `Bearer ${token}`)
         .expect(400)
         .expect((res) => {
           const error = res.body as ErrorResponse;
@@ -160,8 +167,10 @@ describe('ProductsController (e2e)', () => {
   // T006/T011: E2E tests for POST /products
   describe('POST /products', () => {
     it('should create product with full request', () => {
+      const token = createMockJwt({ roles: ['admin'] });
       return request(app.getHttpServer())
         .post('/products')
+        .set('Authorization', `Bearer ${token}`)
         .send({
           name: 'Laptop Pro',
           description: 'High-performance laptop with 16GB RAM and 512GB SSD',
@@ -182,8 +191,10 @@ describe('ProductsController (e2e)', () => {
     });
 
     it('should create product with minimal request', () => {
+      const token = createMockJwt({ roles: ['admin'] });
       return request(app.getHttpServer())
         .post('/products')
+        .set('Authorization', `Bearer ${token}`)
         .send({ name: 'Minimal Product' })
         .expect(201)
         .expect((res) => {
@@ -197,8 +208,10 @@ describe('ProductsController (e2e)', () => {
     });
 
     it('should return 400 for missing name', () => {
+      const token = createMockJwt({ roles: ['admin'] });
       return request(app.getHttpServer())
         .post('/products')
+        .set('Authorization', `Bearer ${token}`)
         .send({ description: 'Missing name' })
         .expect(400)
         .expect((res) => {

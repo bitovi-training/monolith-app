@@ -4,10 +4,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 /**
  * UserRepository
- * 
+ *
  * In-memory storage for user data.
  * In production, this would be replaced with a database (e.g., PostgreSQL, MongoDB).
- * 
+ *
  * Mock users are seeded on startup for development and testing.
  */
 @Injectable()
@@ -28,8 +28,9 @@ export class UserRepository implements OnModuleInit {
    */
   private async seedMockUsers() {
     // Pre-hashed password for 'password123' (bcrypt hash)
-    const defaultPasswordHash = '$2b$10$6dg8POodXtd8msXSKr0KIuN0sQskcRu4/04IWdH2nTWQdG5pbSH26';
-    
+    const defaultPasswordHash =
+      '$2b$10$6dg8POodXtd8msXSKr0KIuN0sQskcRu4/04IWdH2nTWQdG5pbSH26';
+
     const mockUsers = [
       {
         id: '550e8400-e29b-41d4-a716-446655440001',
@@ -58,7 +59,7 @@ export class UserRepository implements OnModuleInit {
     ];
 
     const now = new Date();
-    
+
     mockUsers.forEach((mockUser) => {
       const user: User = {
         ...mockUser,
@@ -69,12 +70,14 @@ export class UserRepository implements OnModuleInit {
     });
 
     this.logger.log(`Seeded ${mockUsers.length} mock users for development`);
-    this.logger.log('Mock credentials - Email: admin@example.com, user@example.com, manager@example.com, test@example.com | Password: password123');
+    this.logger.log(
+      'Mock credentials - Email: admin@example.com, user@example.com, manager@example.com, test@example.com | Password: password123',
+    );
   }
 
   /**
    * Find a user by email
-   * 
+   *
    * @param email - User's email address
    * @returns User if found, undefined otherwise
    */
@@ -95,7 +98,7 @@ export class UserRepository implements OnModuleInit {
 
   /**
    * Find a user by ID
-   * 
+   *
    * @param id - User's unique identifier
    * @returns User if found, undefined otherwise
    */
@@ -113,13 +116,17 @@ export class UserRepository implements OnModuleInit {
 
   /**
    * Create a new user
-   * 
+   *
    * @param email - User's email address
    * @param passwordHash - Hashed password
    * @param roles - Array of role identifiers
    * @returns Created user
    */
-  async create(email: string, passwordHash: string, roles: string[]): Promise<User> {
+  async create(
+    email: string,
+    passwordHash: string,
+    roles: string[],
+  ): Promise<User> {
     const now = new Date();
     const user: User = {
       id: uuidv4(),
@@ -143,7 +150,7 @@ export class UserRepository implements OnModuleInit {
 
   /**
    * Update user's last updated timestamp
-   * 
+   *
    * @param userId - User's unique identifier
    */
   async touch(userId: string): Promise<void> {
@@ -156,7 +163,7 @@ export class UserRepository implements OnModuleInit {
 
   /**
    * Get all users (for debugging/admin purposes)
-   * 
+   *
    * @returns Array of all users
    */
   async findAll(): Promise<User[]> {

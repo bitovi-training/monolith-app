@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
-import { UsersModule } from '../users.module';
+import { UsersModule } from '../../../src/users/users.module';
 
 describe('Auth E2E Tests', () => {
   let app: INestApplication;
