@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { AuthGuard } from '@bitovi-training/auth-middleware';
 import { LoyaltyController } from './loyalty.controller';
 import { LoyaltyService } from './loyalty.service';
 
@@ -13,8 +14,15 @@ describe('LoyaltyController', () => {
           provide: LoyaltyService,
           useValue: {},
         },
+        {
+          provide: AuthGuard,
+          useValue: {},
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(AuthGuard)
+      .useValue({})
+      .compile();
 
     controller = module.get<LoyaltyController>(LoyaltyController);
   });

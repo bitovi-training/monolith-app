@@ -1,13 +1,17 @@
-import { Module, forwardRef } from '@nestjs/common';
-import { LoyaltyModule } from '../loyalty/loyalty.module';
-import { ProductsModule } from '../products/products.module';
+import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
+import { ConfigModule } from '@nestjs/config';
+import { AuthModule } from '@bitovi-training/auth-middleware';
 import { OrdersController } from './orders.controller';
 import { OrdersService } from './orders.service';
+import { OrderRepository } from './repositories/order.repository';
+import { ProductClient } from './clients/product-client';
+import { LoyaltyClient } from './clients/loyalty-client';
 
 @Module({
-  imports: [ProductsModule, forwardRef(() => LoyaltyModule)],
+  imports: [HttpModule, ConfigModule, AuthModule],
   controllers: [OrdersController],
-  providers: [OrdersService],
-  exports: [OrdersService],
+  providers: [OrdersService, OrderRepository, ProductClient, LoyaltyClient],
+  exports: [OrdersService, OrderRepository],
 })
 export class OrdersModule {}

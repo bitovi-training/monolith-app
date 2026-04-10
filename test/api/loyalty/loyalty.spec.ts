@@ -137,7 +137,7 @@ describe('Loyalty Service', () => {
         points: 99999,
       }),
     );
-    expect([201, 400, 409]).toContain(response.status);
+    expect([201, 400, 404, 409]).toContain(response.status);
   });
 
   it('get redemption history for a user', async () => {

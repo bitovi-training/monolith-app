@@ -1,165 +1,283 @@
 import {
-  BadRequestException,
-  Inject,
   Injectable,
   NotFoundException,
-  forwardRef,
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Logger,
+  Inject,
 } from '@nestjs/common';
-import { randomUUID } from 'crypto';
-import { LoyaltyService } from '../loyalty/loyalty.service';
-import { ProductsService } from '../products/products.service';
-
-export interface OrderProduct {
-  productId: string;
-  quantity: number;
-}
-
-export type OrderStatus =
-  | 'PENDING'
-  | 'PROCESSING'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'CANCELED';
-
-export interface Order {
-  id: string;
-  userId: string;
-  products: OrderProduct[];
-  totalPrice: number;
-  accruedLoyaltyPoints: number;
-  orderDate: string;
-  status: OrderStatus;
-}
+import { ConfigService } from '@nestjs/config';
+import { Order } from './entities/order.entity';
+import { OrderRepository } from './repositories/order.repository';
+import { ProductClient } from './clients/product-client';
+import { LoyaltyClient } from './clients/loyalty-client';
+import { OrderResponseDto, OrderStatus } from './dto/order-response.dto';
+import { CreateOrderDto, OrderProductDto } from './dto/create-order.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 
 @Injectable()
 export class OrdersService {
-  private orders: Order[] = [
-    {
-      id: '650e8400-e29b-41d4-a716-446655440000',
-      userId: '550e8400-e29b-41d4-a716-446655440001',
-      products: [
-        { productId: '550e8400-e29b-41d4-a716-446655440000', quantity: 1 },
-      ],
-      totalPrice: 1299.99,
-      accruedLoyaltyPoints: 0,
-      orderDate: new Date().toISOString(),
-      status: 'PENDING',
-    },
-  ];
+  private readonly logger = new Logger(OrdersService.name);
+  private readonly productServiceUrl: string;
+  private readonly loyaltyServiceUrl: string;
 
   constructor(
-    private readonly productsService: ProductsService,
-    @Inject(forwardRef(() => LoyaltyService))
-    private readonly loyaltyService: LoyaltyService,
-  ) {}
-
-  listOrders() {
-    return { orders: this.orders, total: this.orders.length };
+    private readonly orderRepository: OrderRepository,
+    private readonly productClient: ProductClient,
+    private readonly loyaltyClient: LoyaltyClient,
+    private readonly configService: ConfigService,
+  ) {
+    this.productServiceUrl =
+      this.configService.get<string>('PRODUCT_SERVICE_URL') ||
+      'http://localhost:3000';
+    this.loyaltyServiceUrl =
+      this.configService.get<string>('LOYALTY_SERVICE_URL') ||
+      'http://localhost:3000';
   }
 
-  getOrderById(orderId: string): Order {
-    const order = this.orders.find((o) => o.id === orderId);
-    if (!order) {
-      throw new NotFoundException('Order not found');
-    }
-    return order;
-  }
-
-  createOrder(userId: string, products: OrderProduct[]): Order {
-    if (!userId) {
-      throw new BadRequestException('User ID is required');
-    }
-    if (!products?.length) {
-      throw new BadRequestException('Order must contain at least one product');
-    }
-
-    let totalPrice = 0;
-    for (const p of products) {
-      if (p.quantity <= 0) {
-        throw new BadRequestException('Product quantity must be positive');
-      }
-      const validated = this.productsService.validateProduct(p.productId);
-      totalPrice += validated.price * p.quantity;
-    }
-
-    const order: Order = {
-      id: randomUUID(),
-      userId,
-      products,
-      totalPrice,
-      accruedLoyaltyPoints: 0,
-      orderDate: new Date().toISOString(),
-      status: 'PENDING',
+  async listOrders(): Promise<{ orders: OrderResponseDto[]; total: number }> {
+    const orders = this.orderRepository.findAll();
+    return {
+      orders: orders.map((order) => this.mapOrderToResponse(order)),
+      total: orders.length,
     };
-
-    this.orders.push(order);
-    return order;
   }
 
-  updateOrder(orderId: string, products: OrderProduct[]): Order {
-    const order = this.getOrderById(orderId);
-    if (order.status !== 'PENDING') {
+  async getOrderById(
+    orderId: string,
+    authToken?: string,
+  ): Promise<OrderResponseDto> {
+    this.validateUUID(orderId, 'Order ID');
+
+    const order = this.orderRepository.findById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    return this.mapOrderToResponse(order);
+  }
+
+  async createOrder(
+    createOrderDto: CreateOrderDto,
+    authToken?: string,
+  ): Promise<OrderResponseDto> {
+    const { userId, products } = createOrderDto;
+
+    // Validate products exist and calculate total price
+    const validatedProducts: Array<{
+      productId: string;
+      price: number;
+      quantity: number;
+    }> = [];
+    let totalPrice = 0;
+    const invalidProducts: string[] = [];
+
+    for (const product of products) {
+      try {
+        const { price } = await this.productClient.validateProduct(
+          product.productId,
+          this.productServiceUrl,
+          authToken,
+        );
+        validatedProducts.push({
+          productId: product.productId,
+          price,
+          quantity: product.quantity,
+        });
+        totalPrice += price * product.quantity;
+      } catch (error) {
+        invalidProducts.push(product.productId);
+      }
+    }
+
+    if (invalidProducts.length > 0) {
       throw new BadRequestException(
-        'Can only update products for pending orders',
+        `Invalid products: ${invalidProducts.join(', ')}`,
       );
     }
 
-    const current = new Map<string, number>();
-    for (const p of order.products) {
-      current.set(p.productId, p.quantity);
+    // Create new order
+    const order = new Order(
+      userId,
+      products.map((p) => ({ productId: p.productId, quantity: p.quantity })),
+      totalPrice,
+    );
+
+    // Calculate loyalty points (1 point per dollar)
+    order.accruedLoyaltyPoints = Math.floor(totalPrice);
+
+    // Save order
+    const savedOrder = this.orderRepository.create(order);
+
+    // Attempt to accrue loyalty points (non-blocking)
+    if (order.accruedLoyaltyPoints > 0) {
+      this.loyaltyClient
+        .accruePoints(
+          userId,
+          order.accruedLoyaltyPoints,
+          this.loyaltyServiceUrl,
+          authToken,
+        )
+        .catch((error) => {
+          this.logger.warn(
+            `Failed to accrue loyalty points: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          );
+        });
     }
 
-    for (const change of products) {
-      const prev = current.get(change.productId) ?? 0;
-      const next = prev + change.quantity;
-      if (next <= 0) {
-        current.delete(change.productId);
-      } else {
-        current.set(change.productId, next);
+    return this.mapOrderToResponse(savedOrder);
+  }
+
+  async updateOrder(
+    orderId: string,
+    updateOrderDto: UpdateOrderDto,
+    authToken?: string,
+  ): Promise<OrderResponseDto> {
+    this.validateUUID(orderId, 'Order ID');
+
+    const order = this.orderRepository.findById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    // Order must be in PENDING status to update
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('ORDER_NOT_PENDING', {
+        cause: `Order ${orderId} is not in PENDING status`,
+      });
+    }
+
+    if (!updateOrderDto.products || updateOrderDto.products.length === 0) {
+      throw new BadRequestException('At least one product update is required');
+    }
+
+    // Validate any new products
+    const invalidProducts: string[] = [];
+    const productPrices: Map<string, number> = new Map();
+
+    for (const product of updateOrderDto.products) {
+      // Only validate new products (not already in order)
+      const isExisting = order.products.some(
+        (p) => p.productId === product.productId,
+      );
+
+      if (!isExisting && product.quantity > 0) {
+        try {
+          const { price } = await this.productClient.validateProduct(
+            product.productId,
+            this.productServiceUrl,
+            authToken,
+          );
+          productPrices.set(product.productId, price);
+        } catch (error) {
+          invalidProducts.push(product.productId);
+        }
       }
     }
 
-    const updatedProducts: OrderProduct[] = [...current.entries()].map(
-      ([productId, quantity]) => ({ productId, quantity }),
-    );
-
-    if (!updatedProducts.length) {
-      throw new BadRequestException('Order must contain at least one product');
+    if (invalidProducts.length > 0) {
+      throw new BadRequestException(
+        `Invalid products: ${invalidProducts.join(', ')}`,
+      );
     }
 
-    let totalPrice = 0;
-    for (const p of updatedProducts) {
-      const validated = this.productsService.validateProduct(p.productId);
-      totalPrice += validated.price * p.quantity;
+    // Store old total price for loyalty points adjustment
+    const oldTotalPrice = order.totalPrice;
+
+    // Update products
+    order.updateProducts(updateOrderDto.products);
+
+    // Recalculate total price
+    let newTotalPrice = 0;
+    for (const product of order.products) {
+      const price =
+        productPrices.get(product.productId) ||
+        (
+          await this.productClient.validateProduct(
+            product.productId,
+            this.productServiceUrl,
+            authToken,
+          )
+        ).price;
+      newTotalPrice += price * product.quantity;
     }
 
-    order.products = updatedProducts;
-    order.totalPrice = totalPrice;
-    return order;
+    order.totalPrice = newTotalPrice;
+    order.accruedLoyaltyPoints = Math.floor(newTotalPrice);
+
+    // Save updated order
+    const updatedOrder = this.orderRepository.update(order);
+
+    return this.mapOrderToResponse(updatedOrder);
   }
 
-  cancelOrSubmitOrder(orderId: string, action: 'CANCEL' | 'SUBMIT'): Order {
-    const order = this.getOrderById(orderId);
-    if (action === 'CANCEL') {
-      order.status = 'CANCELED';
-      return order;
+  async submitOrder(
+    orderId: string,
+    authToken?: string,
+  ): Promise<OrderResponseDto> {
+    this.validateUUID(orderId, 'Order ID');
+
+    const order = this.orderRepository.findById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
     }
 
-    if (order.status !== 'PENDING') {
-      throw new BadRequestException('Only pending orders can be submitted');
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('ORDER_NOT_PENDING', {
+        cause: `Order ${orderId} is not in PENDING status`,
+      });
     }
 
-    order.status = 'PROCESSING';
-    const accrual = this.loyaltyService.accruePoints(
-      order.id,
-      order.userId,
-      order.totalPrice,
-    );
-    order.accruedLoyaltyPoints = accrual.points;
-    return order;
+    order.submit();
+    const updatedOrder = this.orderRepository.update(order);
+
+    return this.mapOrderToResponse(updatedOrder);
   }
 
-  getOrdersByUserId(userId: string): Order[] {
-    return this.orders.filter((o) => o.userId === userId);
+  async cancelOrder(
+    orderId: string,
+    authToken?: string,
+  ): Promise<OrderResponseDto> {
+    this.validateUUID(orderId, 'Order ID');
+
+    const order = this.orderRepository.findById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    if (order.status !== OrderStatus.PENDING) {
+      throw new BadRequestException('ORDER_NOT_PENDING', {
+        cause: `Order ${orderId} is not in PENDING status`,
+      });
+    }
+
+    order.cancel();
+    const updatedOrder = this.orderRepository.update(order);
+
+    return this.mapOrderToResponse(updatedOrder);
+  }
+
+  private mapOrderToResponse(order: Order): OrderResponseDto {
+    return {
+      id: order.id,
+      userId: order.userId,
+      products: order.products.map((p) => ({
+        productId: p.productId,
+        quantity: p.quantity,
+      })),
+      totalPrice: order.totalPrice,
+      accruedLoyaltyPoints: order.accruedLoyaltyPoints,
+      orderDate: order.orderDate,
+      status: order.status,
+    };
+  }
+
+  private validateUUID(value: string, fieldName: string): void {
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(value)) {
+      throw new BadRequestException(`Invalid ${fieldName} format`);
+    }
   }
 }

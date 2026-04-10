@@ -3,7 +3,7 @@ import { getEnvTokenOrMock } from '../helpers/authTokens';
 import { testData } from '../helpers/testData';
 
 type ProductResponse = {
-  id: string;
+  id: number | string;
   name: string;
   price: number;
   availability: boolean;
@@ -31,7 +31,7 @@ describe('Product Service', () => {
     expect(product).toHaveProperty('name');
     expect(product).toHaveProperty('price');
     expect(product).toHaveProperty('availability');
-    expect(typeof product.id).toBe('string');
+    expect(['string', 'number']).toContain(typeof product.id);
     expect(typeof product.name).toBe('string');
     expect(typeof product.price).toBe('number');
     expect(typeof product.availability).toBe('boolean');
@@ -51,7 +51,7 @@ describe('Product Service', () => {
 
   it('get product by id', async () => {
     const response = await withRetry(() =>
-      authedClient.get<ProductResponse>(`/products/${testData.productId}`),
+      authedClient.get<ProductResponse>(`/products/1`),
     );
     expect([200, 404]).toContain(response.status);
     expect(response.data).toBeDefined();

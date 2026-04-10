@@ -1,12 +1,15 @@
 import { createClient, withRetry } from '../helpers/httpClient';
 import { testData } from '../helpers/testData';
+import { AxiosResponse } from 'axios';
 
 describe('User Service', () => {
   const client = createClient('user');
   const authedClient = createClient('user', true);
 
   it('health check', async () => {
-    const response = await withRetry(() => client.get('/health'));
+    const response = await withRetry<AxiosResponse>(() =>
+      client.get('/health'),
+    );
     expect(response.status).toBe(200);
     expect(response.data).toBeDefined();
   });
@@ -14,7 +17,7 @@ describe('User Service', () => {
   it('sign up', async () => {
     const response = await withRetry(() =>
       client.post('/auth/signup', {
-        email: testData.signupEmail,
+        email: 'newuser@test.com',
         password: testData.signupPassword,
         roles: ['user', 'admin'],
       }),
