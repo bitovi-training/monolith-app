@@ -1,98 +1,99 @@
-# Example Go Server
+# Orders Service - TypeScript/NestJS Implementation
 
-A Go HTTP API server demonstrating e-commerce order management functionality. This project follows a contract-first approach with OpenAPI specification and implements user management, product catalog, and order workflow features.
+A NestJS-based microservice managing e-commerce order operations within the monolith. Provides CRUD operations for orders, integrates with Product Service for product validation, and coordinates with Loyalty Service for loyalty points.
 
-**Constitutional Compliance**: ✅ 100% Compliant (v1.0.1) | [View Constitution](.specify/memory/constitution.md)
+**Status**: ✅ Active (TypeScript/NestJS)  
+**Previous Implementation**: Go 1.25.5 (archived for reference)
 
-## Table of Contents
+## Quick Links
 
-- [Architecture](#architecture)
-- [Features](#features)
-- [Getting Started](#getting-started)
-- [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
-- [Development](#development)
+- [API Documentation](#api-reference)
+- [Getting Started](#quick-start)
+- [Configuration](#configuration)
+- [Integration](#integration-with-other-services)
 - [Testing](#testing)
-- [Design Patterns](#design-patterns)
-- [Constitutional Principles](#constitutional-principles)
+- [Migration Guide](../../ORDERS_REFACTORING.md)
 
 ## Architecture
 
-This project follows standard Go project layout with clear separation of concerns:
+NestJS-based modular architecture with clear separation of concerns:
 
 ```
-example-go-server/
-├── api/                    # API contracts (OpenAPI specification)
-├── cmd/server/            # Application entry point
-├── internal/              # Private application code
-│   ├── handlers/          # HTTP request handlers
-│   ├── middleware/        # HTTP middleware (auth, logging)
-│   ├── models/           # Data structures
-│   └── services/         # Business logic layer
-└── tests/integration/    # Integration tests
+src/orders/
+├── clients/              # External service integrations
+│   ├── product-client.ts
+│   └── loyalty-client.ts
+├── dto/                  # Request/Response validation
+│   ├── create-order.dto.ts
+│   ├── update-order.dto.ts
+│   └── order-response.dto.ts
+├── entities/             # Domain models
+│   └── order.entity.ts
+├── repositories/         # Data access layer
+│   └── order.repository.ts
+├── orders.controller.ts  # HTTP routing
+├── orders.service.ts     # Business logic
+└── orders.module.ts      # Module definition
 ```
 
-**Key Principle**: The OpenAPI specification (`api/openapi.yaml`) is the source of truth for all API contracts.
+**Architecture Principle**: Layered architecture with clear separation between HTTP, business logic, and data access layers.
 
 ## Features
 
-### User Management
-User management endpoints are now owned by user-service; order-service no longer persists user profiles.
-
-### Product Catalog
-- Browse available products
-- View product details including pricing
-- Pre-configured catalog with 5 sample products
-
 ### Order Management
-- Create orders with multiple products (requires userId)
-- Update order products (additive/subtractive quantities)
-- Submit orders to lock for processing
-- Track order status (PENDING → PROCESSING → SHIPPED → DELIVERED)
-- Cancel orders via submit endpoint
-- Loyalty points are calculated and stored by loyalty-service on order submission
+- Create orders with product validation
+- List and retrieve order details
+- Update pending orders (add/remove products)
+- Submit orders for processing
+- Track order status lifecycle
+- Compute loyalty points
 
-### Authentication & Middleware
-- JWT Bearer token authentication (simplified for demo)
-- Request/response logging middleware
-- Standardized error responses
+### Integrations
+- **Product Service**: Validate products, fetch prices
+- **Loyalty Service**: Accrue loyalty points async
+- **Auth Service**: JWT bearer token validation, admin role enforcement
 
-## Getting Started
+### Data Persistence
+- In-memory storage with sample mock data
+- Repository pattern supports DB migration
+- Transaction support through service layer
+
+## Quick Start
 
 ### Prerequisites
-
-- Go 1.25.5 or higher
-- Git
+- Node.js 20+
+- npm 10+
+- Running services: Product Service, Loyalty Service
 
 ### Installation
-
-1. Clone the repository:
 ```bash
-git clone https://github.com/Bitovi/example-go-server.git
-cd example-go-server
+cd /path/to/monolith-app
+
+# Install dependencies
+npm install
+
+# Run tests
+npm test -- orders
+
+# Start development server
+npm run start
+
+# Start in watch mode
+npm run start:dev
 ```
 
-2. Install dependencies:
+### Example API Call
 ```bash
-go mod download
-```
-
-3. Run the server:
-```bash
-go run cmd/server/main.go
-```
-
-The server will start on `http://localhost:8080`
-
-### Quick Test
-
-```bash
-# Health check
-curl http://localhost:8080/health
-
-# List products (requires auth)
-curl -H "Authorization: Bearer valid_test_token_1234567890" \
-     http://localhost:8080/products
+# Create an order
+curl -X POST http://localhost:3000/orders \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "750e8400-e29b-41d4-a716-446655440000",
+    "products": [
+      {"productId": "550e8400-e29b-41d4-a716-446655440000", "quantity": 2}
+    ]
+  }'
 ```
 
 ## API Documentation

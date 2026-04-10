@@ -1,3 +1,15 @@
+/**
+ * Order Service Specification Tests
+ * 
+ * These tests validate the Orders Service API behavior.
+ * 
+ * IMPLEMENTATION: TypeScript/NestJS (Previously: Go)
+ * STATUS: Refactored for NestJS monorepo integration
+ * PORT: 3000 (Previously: 8080)
+ * 
+ * The Orders service is now integrated into the main monolith as a NestJS module.
+ */
+
 import { createClient, withRetry } from '../helpers/httpClient';
 import { getEnvTokenOrMock } from '../helpers/authTokens';
 import { testData } from '../helpers/testData';
